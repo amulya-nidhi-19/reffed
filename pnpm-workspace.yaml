@@ -1,6 +1,8 @@
 allowBuilds:
   '@prisma/client': false
   '@prisma/engines': true
+  bcrypt: false
+  esbuild: true
   prisma: false
   protobufjs: false
   sharp: false
