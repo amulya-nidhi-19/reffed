@@ -200,6 +200,77 @@ LIMIT $2 OFFSET $3
 
 **Filter present:** `WHERE "public"."QuestionnaireTemplate"."tenantId" = $1` ✅
 
+---
+
+## Query 10: `scopedDb(tenantId).candidate.findMany()`
+
+**Prisma call:**
+```ts
+const db = scopedDb(tenantId)
+await db.candidate.findMany({
+  where: { tenantId },
+  orderBy: { createdAt: 'desc' },
+  skip: 0,
+  take: 25,
+})
+```
+
+**Generated SQL:**
+```sql
+SELECT "public"."Candidate".* FROM "public"."Candidate"
+WHERE "public"."Candidate"."tenantId" = $1
+ORDER BY "public"."Candidate"."createdAt" DESC
+LIMIT $2 OFFSET $3
+```
+
+**Filter present:** `WHERE "public"."Candidate"."tenantId" = $1` ✅
+
+---
+
+## Query 11: `scopedDb(tenantId).candidate.count()`
+
+**Prisma call:**
+```ts
+const db = scopedDb(tenantId)
+await db.candidate.count({
+  where: { tenantId, status: 'ACTIVE' },
+})
+```
+
+**Generated SQL:**
+```sql
+SELECT COUNT(*) FROM (
+  SELECT "public"."Candidate"."id"
+  FROM "public"."Candidate"
+  WHERE ("public"."Candidate"."tenantId" = $1 AND "public"."Candidate"."status" = $2)
+  OFFSET $3
+) AS "sub"
+```
+
+**Filter present:** `WHERE ("public"."Candidate"."tenantId" = $1 AND ...)` ✅
+
+---
+
+## Query 12: `scopedDb(tenantId).candidate.findUnique()`
+
+**Prisma call:**
+```ts
+const db = scopedDb(tenantId)
+await db.candidate.findUnique({
+  where: { id: 'audit-candidate-id', tenantId },
+  include: { questionnaire: true },
+})
+```
+
+**Generated SQL:**
+```sql
+SELECT "public"."Candidate".* FROM "public"."Candidate"
+WHERE ("public"."Candidate"."id" = $1 AND "public"."Candidate"."tenantId" = $2)
+LIMIT $3 OFFSET $4
+```
+
+**Filter present:** `WHERE ("public"."Candidate"."id" = $1 AND "public"."Candidate"."tenantId" = $2)` ✅
+
 ## Conclusion
 
-All tenant-scoped queries enforce the `tenantId` boundary at the query layer. No raw `prisma.membership.*`, `prisma.auditLog.*`, `prisma.mockEmail.*`, `prisma.question.*`, or `prisma.questionnaireTemplate.*` calls are allowed outside `/src/lib/db/`. The `scopedDb(tenantId)` helper is the required entry point for tenant-scoped data access.
+All tenant-scoped queries enforce the `tenantId` boundary at the query layer. No raw `prisma.membership.*`, `prisma.auditLog.*`, `prisma.mockEmail.*`, `prisma.question.*`, `prisma.questionnaireTemplate.*`, `prisma.candidate.*`, `prisma.candidateQuestionnaire.*`, `prisma.referee.*`, or `prisma.refereeResponse.*` calls are allowed outside `/src/lib/db/`. The `scopedDb(tenantId)` helper is the required entry point for tenant-scoped data access.

@@ -36,6 +36,10 @@ model Tenant {
   mockEmails           MockEmail[]
   questions            Question[]
   questionnaireTemplates QuestionnaireTemplate[]
+  candidates           Candidate[]
+  candidateQuestionnaires CandidateQuestionnaire[]
+  referees             Referee[]
+  refereeResponses     RefereeResponse[]
 
   @@index([slug])
 }
@@ -100,6 +104,98 @@ model QuestionnaireTemplateItem {
   @@index([questionId])
 }
 
+enum CandidateStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED_DPDP
+}
+
+model Candidate {
+  id              String          @id @default(cuid())
+  tenantId        String
+  createdByUserId String
+  firstName       String
+  lastName        String
+  email           String
+  phone           String?
+  roleTitle       String
+  notes           String?
+  status          CandidateStatus @default(ACTIVE)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  tenant          Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy       User                     @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  questionnaire   CandidateQuestionnaire[]
+  referees        Referee[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([email])
+}
+
+model CandidateQuestionnaire {
+  id              String   @id @default(cuid())
+  candidateId     String   @unique
+  tenantId        String
+  frozenAt        DateTime @default(now())
+  templateSnapshot  Json
+
+  candidate       Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([candidateId])
+}
+
+enum RefereeStatus {
+  INVITED
+  REMINDED
+  SUBMITTED
+  REVOKED
+}
+
+model Referee {
+  id              String        @id @default(cuid())
+  tenantId        String
+  candidateId     String
+  name            String
+  email           String
+  relationship    String
+  inviteToken     String        @unique
+  invitedAt       DateTime      @default(now())
+  remindedAt      DateTime?
+  lastReminderAt  DateTime?
+  submittedAt     DateTime?
+  status          RefereeStatus @default(INVITED)
+
+  candidate       Candidate        @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  responses       RefereeResponse[]
+
+  @@index([tenantId])
+  @@index([candidateId])
+  @@index([inviteToken])
+  @@index([status])
+}
+
+model RefereeResponse {
+  id                  String   @id @default(cuid())
+  refereeId           String
+  tenantId            String
+  questionId          String
+  questionTextSnapshot String
+  answerText          String
+  submittedAt         DateTime @default(now())
+
+  referee             Referee  @relation(fields: [refereeId], references: [id], onDelete: Cascade)
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([refereeId])
+  @@index([questionId])
+}
+
 model User {
   id             String    @id @default(cuid())
   email          String    @unique
@@ -115,6 +211,7 @@ model User {
   sessions     Session[]
   memberships  Membership[]
   auditLogs    AuditLog[] @relation("ActorAuditLogs")
+  candidates   Candidate[]
 }
 
 model Membership {

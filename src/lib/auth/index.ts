@@ -6,7 +6,6 @@ import { compare } from 'bcrypt'
 import { Role } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
-import { emailProvider } from '@/lib/email'
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -75,12 +74,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       server: {},
       from: process.env.EMAIL_FROM ?? 'noreply@reffed.app',
       sendVerificationRequest: async ({ identifier, url }) => {
-        await emailProvider.send({
-          to: identifier,
-          subject: 'Sign in to Reffed',
-          html: `<p>Click <a href="${url}">here</a> to sign in to Reffed.</p>`,
-          text: `Sign in to Reffed: ${url}`,
-          category: 'magic-link',
+        await prisma.mockEmail.create({
+          data: {
+            to: identifier,
+            subject: 'Sign in to Reffed',
+            html: `<p>Click <a href="${url}">here</a> to sign in to Reffed.</p>`,
+            text: `Sign in to Reffed: ${url}`,
+            category: 'magic-link',
+            tenantId: null,
+          },
         })
       },
     }),

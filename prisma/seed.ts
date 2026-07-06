@@ -135,7 +135,72 @@ async function main() {
     }
   }
 
-  console.log('Seeded tenants, users, questions, and templates')
+  const recruiterUser = await prisma.user.findUnique({
+    where: { email: 'recruiter@acme.test' },
+  })
+
+  const seTemplate = await prisma.questionnaireTemplate.findFirst({
+    where: { tenantId: acme.id, name: 'Software Engineer — IC' },
+    include: {
+      items: {
+        orderBy: { order: 'asc' },
+        include: { template: true },
+      },
+    },
+  })
+
+  if (recruiterUser && seTemplate) {
+    const existingCandidate = await prisma.candidate.findFirst({
+      where: { tenantId: acme.id, email: 'jane.doe@example.com' },
+    })
+
+    if (!existingCandidate) {
+      const candidate = await prisma.candidate.create({
+        data: {
+          tenantId: acme.id,
+          createdByUserId: recruiterUser.id,
+          firstName: 'Jane',
+          lastName: 'Doe',
+          email: 'jane.doe@example.com',
+          phone: '+1 555 123 4567',
+          roleTitle: 'Software Engineer',
+          notes: 'Mid-level frontend candidate.',
+          questionnaire: {
+            create: {
+              tenantId: acme.id,
+              templateSnapshot: {
+                templateId: seTemplate.id,
+                templateName: seTemplate.name,
+                roleCategory: seTemplate.roleCategory,
+                description: seTemplate.description,
+                frozenAt: new Date().toISOString(),
+                items: seTemplate.items.map((item: { template: { id: string; text: string; helpText: string | null; category: string }; order: number }) => ({
+                  questionId: item.template.id,
+                  text: item.template.text,
+                  helpText: item.template.helpText,
+                  category: item.template.category,
+                  order: item.order,
+                })),
+              },
+            },
+          },
+        },
+      })
+
+      await prisma.referee.create({
+        data: {
+          tenantId: acme.id,
+          candidateId: candidate.id,
+          name: 'John Smith',
+          email: 'john.smith@acme.test',
+          relationship: 'Manager at Acme',
+          inviteToken: randomBytes(32).toString('base64url'),
+        },
+      })
+    }
+  }
+
+  console.log('Seeded tenants, users, questions, templates, and candidates')
 }
 
 main()

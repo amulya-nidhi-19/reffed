@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db'
+import { scopedDb } from '@/lib/db/scoped'
 
 export type EmailPayload = {
   to: string
@@ -6,7 +6,7 @@ export type EmailPayload = {
   html?: string
   text?: string
   category: string
-  tenantId?: string
+  tenantId: string
 }
 
 export interface EmailProvider {
@@ -15,17 +15,21 @@ export interface EmailProvider {
 
 export class MockEmailProvider implements EmailProvider {
   async send(payload: EmailPayload): Promise<void> {
-    await prisma.mockEmail.create({
+    const db = scopedDb(payload.tenantId)
+    await db.mockEmail.create({
       data: {
         to: payload.to,
         subject: payload.subject,
         html: payload.html ?? null,
         text: payload.text ?? null,
         category: payload.category,
-        tenantId: payload.tenantId ?? null,
       },
     })
   }
 }
 
 export const emailProvider: EmailProvider = new MockEmailProvider()
+
+export async function sendEmail(payload: EmailPayload): Promise<void> {
+  return emailProvider.send(payload)
+}
