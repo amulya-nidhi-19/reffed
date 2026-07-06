@@ -31,11 +31,73 @@ model Tenant {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
-  memberships Membership[]
-  auditLogs   AuditLog[]
-  mockEmails  MockEmail[]
+  memberships          Membership[]
+  auditLogs            AuditLog[]
+  mockEmails           MockEmail[]
+  questions            Question[]
+  questionnaireTemplates QuestionnaireTemplate[]
 
   @@index([slug])
+}
+
+enum QuestionCategory {
+  WORK_STYLE
+  COLLABORATION
+  IMPACT
+  LEADERSHIP
+  INTEGRITY
+  OTHER
+}
+
+model Question {
+  id          String           @id @default(cuid())
+  tenantId    String
+  text        String
+  helpText    String?
+  category    QuestionCategory
+  isArchived  Boolean          @default(false)
+  createdBy   String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  templateItems QuestionnaireTemplateItem[]
+
+  @@index([tenantId])
+  @@index([category])
+  @@index([isArchived])
+}
+
+model QuestionnaireTemplate {
+  id            String   @id @default(cuid())
+  tenantId      String
+  name          String
+  roleCategory  String
+  description   String?
+  isArchived    Boolean  @default(false)
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items  QuestionnaireTemplateItem[]
+
+  @@index([tenantId])
+  @@index([isArchived])
+}
+
+model QuestionnaireTemplateItem {
+  id         String   @id @default(cuid())
+  templateId String
+  questionId String
+  order      Int      @default(0)
+
+  template Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionnaireTemplate QuestionnaireTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, questionId])
+  @@index([templateId])
+  @@index([questionId])
 }
 
 model User {

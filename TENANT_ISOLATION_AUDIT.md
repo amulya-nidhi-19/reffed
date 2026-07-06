@@ -125,6 +125,81 @@ SELECT COUNT(*) FROM (
 
 **Filter present:** `WHERE ("public"."Membership"."tenantId" = $1 AND ...)` ✅
 
+## Question Bank Queries
+
+### Query 7: `scopedDb(tenantId).question.findMany()`
+
+**Prisma call:**
+```ts
+const db = scopedDb(tenantId)
+await db.question.findMany({ where: { tenantId }, orderBy: { createdAt: 'desc' }, take: 25 })
+```
+
+**Generated SQL:**
+```sql
+SELECT "public"."Question"."id", "public"."Question"."tenantId", "public"."Question"."text", "public"."Question"."helpText", "public"."Question"."category"::text, "public"."Question"."isArchived", "public"."Question"."createdBy", "public"."Question"."createdAt", "public"."Question"."updatedAt"
+FROM "public"."Question"
+WHERE "public"."Question"."tenantId" = $1
+ORDER BY "public"."Question"."createdAt" DESC
+LIMIT $2 OFFSET $3
+```
+
+**Filter present:** `WHERE "public"."Question"."tenantId" = $1` ✅
+
+---
+
+### Query 8: `scopedDb(tenantId).question.count()`
+
+**Prisma call:**
+```ts
+const db = scopedDb(tenantId)
+await db.question.count({ where: { tenantId, isArchived: false } })
+```
+
+**Generated SQL:**
+```sql
+SELECT COUNT(*) FROM (
+  SELECT "public"."Question"."id"
+  FROM "public"."Question"
+  WHERE ("public"."Question"."tenantId" = $1 AND "public"."Question"."isArchived" = $2)
+  OFFSET $3
+) AS "sub"
+```
+
+**Filter present:** `WHERE ("public"."Question"."tenantId" = $1 AND ...)` ✅
+
+---
+
+### Query 9: `scopedDb(tenantId).questionnaireTemplate.findMany()`
+
+**Prisma call:**
+```ts
+const db = scopedDb(tenantId)
+await db.questionnaireTemplate.findMany({
+  where: { tenantId },
+  orderBy: { createdAt: 'desc' },
+  take: 25,
+  include: { _count: { select: { items: true } } },
+})
+```
+
+**Generated SQL:**
+```sql
+SELECT "public"."QuestionnaireTemplate"."id", "public"."QuestionnaireTemplate"."tenantId", "public"."QuestionnaireTemplate"."name", "public"."QuestionnaireTemplate"."roleCategory", "public"."QuestionnaireTemplate"."description", "public"."QuestionnaireTemplate"."isArchived", "public"."QuestionnaireTemplate"."createdBy", "public"."QuestionnaireTemplate"."createdAt", "public"."QuestionnaireTemplate"."updatedAt", COALESCE("aggr_selection_0_QuestionnaireTemplateItem"."_aggr_count_items", 0) AS "_aggr_count_items"
+FROM "public"."QuestionnaireTemplate"
+LEFT JOIN (
+  SELECT "public"."QuestionnaireTemplateItem"."templateId", COUNT(*) AS "_aggr_count_items"
+  FROM "public"."QuestionnaireTemplateItem"
+  WHERE 1=1
+  GROUP BY "public"."QuestionnaireTemplateItem"."templateId"
+) AS "aggr_selection_0_QuestionnaireTemplateItem" ON ("public"."QuestionnaireTemplate"."id" = "aggr_selection_0_QuestionnaireTemplateItem"."templateId")
+WHERE "public"."QuestionnaireTemplate"."tenantId" = $1
+ORDER BY "public"."QuestionnaireTemplate"."createdAt" DESC
+LIMIT $2 OFFSET $3
+```
+
+**Filter present:** `WHERE "public"."QuestionnaireTemplate"."tenantId" = $1` ✅
+
 ## Conclusion
 
-All tenant-scoped queries enforce the `tenantId` boundary at the query layer. No raw `prisma.membership.*`, `prisma.auditLog.*`, or `prisma.mockEmail.*` calls are allowed outside `/src/lib/db/`. The `scopedDb(tenantId)` helper is the required entry point for tenant-scoped data access.
+All tenant-scoped queries enforce the `tenantId` boundary at the query layer. No raw `prisma.membership.*`, `prisma.auditLog.*`, `prisma.mockEmail.*`, `prisma.question.*`, or `prisma.questionnaireTemplate.*` calls are allowed outside `/src/lib/db/`. The `scopedDb(tenantId)` helper is the required entry point for tenant-scoped data access.
