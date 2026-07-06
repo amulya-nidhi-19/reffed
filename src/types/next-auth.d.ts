@@ -9,6 +9,8 @@ declare module 'next-auth' {
     tenantName?: string
     tenantSlug?: string
     requiresTenantSelection?: boolean
+    impersonatedBy?: string
+    trueActorId?: string
   }
 
   interface Session extends DefaultSession {
@@ -19,6 +21,8 @@ declare module 'next-auth' {
       tenantName?: string
       tenantSlug?: string
       requiresTenantSelection?: boolean
+      impersonatedBy?: string
+      trueActorId?: string
     } & DefaultSession['user']
   }
 }
@@ -31,5 +35,7 @@ declare module 'next-auth/jwt' {
     tenantName?: string
     tenantSlug?: string
     requiresTenantSelection?: boolean
+    impersonatedBy?: string
+    trueActorId?: string
   }
 }

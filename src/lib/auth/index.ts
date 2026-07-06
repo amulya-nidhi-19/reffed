@@ -46,6 +46,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const valid = await compare(password, user.hashedPassword)
         if (!valid) return null
 
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLoginAt: new Date() },
+        })
+
         if (user.memberships.length === 0) return null
 
         let selectedMembership = user.memberships[0]
@@ -89,25 +94,67 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.tenantName = user.tenantName
         token.tenantSlug = user.tenantSlug
         token.requiresTenantSelection = user.requiresTenantSelection
+        token.impersonatedBy = user.impersonatedBy
+        token.trueActorId = user.trueActorId
       }
 
-      if (trigger === 'update' && session && (session as { tenantId?: string }).tenantId) {
-        const selectedTenantId = (session as { tenantId: string }).tenantId
-        const membership = await prisma.membership.findFirst({
-          where: {
-            userId: token.id as string,
-            tenantId: selectedTenantId,
-            isActive: true,
-          },
-          include: { tenant: true },
-        })
+      if (trigger === 'update' && session) {
+        const s = session as {
+          tenantId?: string
+          impersonation?: {
+            impersonatedBy: string
+            trueActorId: string
+            targetUserId: string
+            targetName: string
+            targetRole: Role
+          }
+        }
 
-        if (membership) {
-          token.tenantId = membership.tenantId
-          token.role = membership.role
-          token.tenantName = membership.tenant.name
-          token.tenantSlug = membership.tenant.slug
-          token.requiresTenantSelection = false
+        if (s.tenantId) {
+          const membership = await prisma.membership.findFirst({
+            where: {
+              userId: token.id as string,
+              tenantId: s.tenantId,
+              isActive: true,
+            },
+            include: { tenant: true },
+          })
+
+          if (membership) {
+            token.tenantId = membership.tenantId
+            token.role = membership.role
+            token.tenantName = membership.tenant.name
+            token.tenantSlug = membership.tenant.slug
+            token.requiresTenantSelection = false
+          }
+        }
+
+        if (s.impersonation) {
+          token.id = s.impersonation.targetUserId
+          token.role = s.impersonation.targetRole
+          token.impersonatedBy = s.impersonation.impersonatedBy
+          token.trueActorId = s.impersonation.trueActorId
+        }
+
+        if ((session as { endImpersonation?: boolean }).endImpersonation) {
+          const trueActorId = token.trueActorId
+          if (trueActorId) {
+            const membership = await prisma.membership.findFirst({
+              where: {
+                userId: trueActorId,
+                tenantId: token.tenantId as string,
+                isActive: true,
+              },
+              include: { tenant: true, user: true },
+            })
+
+            if (membership) {
+              token.id = membership.user.id
+              token.role = membership.role
+              token.impersonatedBy = undefined
+              token.trueActorId = undefined
+            }
+          }
         }
       }
 
@@ -120,6 +167,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.user.tenantName = token.tenantName as string | undefined
       session.user.tenantSlug = token.tenantSlug as string | undefined
       session.user.requiresTenantSelection = token.requiresTenantSelection as boolean | undefined
+      session.user.impersonatedBy = token.impersonatedBy as string | undefined
+      session.user.trueActorId = token.trueActorId as string | undefined
       return session
     },
   },

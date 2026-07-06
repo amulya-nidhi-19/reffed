@@ -63,6 +63,68 @@ RETURNING "public"."MockEmail"."id", "public"."MockEmail"."to", "public"."MockEm
 
 ---
 
+## New Queries (User Management)
+
+### Query 4: `scopedDb(tenantId).membership.findMany()`
+
+**Prisma call:**
+```ts
+const db = scopedDb(tenantId)
+await db.membership.findMany({ include: { user: true } })
+```
+
+**Generated SQL:**
+```sql
+SELECT "public"."Membership"."id", "public"."Membership"."userId", "public"."Membership"."tenantId", "public"."Membership"."role"::text, "public"."Membership"."isActive", "public"."Membership"."createdAt"
+FROM "public"."Membership"
+WHERE "public"."Membership"."tenantId" = $1
+OFFSET $2
+```
+
+**Filter present:** `WHERE "public"."Membership"."tenantId" = $1` ✅
+
+---
+
+### Query 5: `scopedDb(tenantId).membership.findUnique({ where: { id } })`
+
+**Prisma call:**
+```ts
+const db = scopedDb(tenantId)
+await db.membership.findUnique({ where: { id: membershipId } })
+```
+
+**Generated SQL:**
+```sql
+SELECT "public"."Membership"."id", "public"."Membership"."userId", "public"."Membership"."tenantId", "public"."Membership"."role"::text, "public"."Membership"."isActive", "public"."Membership"."createdAt"
+FROM "public"."Membership"
+WHERE ("public"."Membership"."id" = $1 AND "public"."Membership"."tenantId" = $2)
+LIMIT $3 OFFSET $4
+```
+
+**Filter present:** `WHERE ("public"."Membership"."id" = $1 AND "public"."Membership"."tenantId" = $2)` ✅
+
+---
+
+### Query 6: `scopedDb(tenantId).membership.count({ where: { role: ORG_ADMIN, isActive: true } })`
+
+**Prisma call:**
+```ts
+const db = scopedDb(tenantId)
+await db.membership.count({ where: { role: Role.ORG_ADMIN, isActive: true } })
+```
+
+**Generated SQL:**
+```sql
+SELECT COUNT(*) FROM (
+  SELECT "public"."Membership"."id"
+  FROM "public"."Membership"
+  WHERE ("public"."Membership"."tenantId" = $1 AND "public"."Membership"."role" = CAST($2::text AS "public"."Role") AND "public"."Membership"."isActive" = $3)
+  OFFSET $4
+) AS "sub"
+```
+
+**Filter present:** `WHERE ("public"."Membership"."tenantId" = $1 AND ...)` ✅
+
 ## Conclusion
 
-All three tenant-scoped queries enforce the `tenantId` boundary at the query layer. No raw `prisma.membership.*`, `prisma.auditLog.*`, or `prisma.mockEmail.*` calls are allowed outside `/src/lib/db/`. The `scopedDb(tenantId)` helper is the required entry point for tenant-scoped data access.
+All tenant-scoped queries enforce the `tenantId` boundary at the query layer. No raw `prisma.membership.*`, `prisma.auditLog.*`, or `prisma.mockEmail.*` calls are allowed outside `/src/lib/db/`. The `scopedDb(tenantId)` helper is the required entry point for tenant-scoped data access.

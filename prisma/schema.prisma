@@ -45,6 +45,7 @@ model User {
   hashedPassword String?
   emailVerified  DateTime?
   image          String?
+  lastLoginAt    DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
